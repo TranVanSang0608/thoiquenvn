@@ -277,6 +277,164 @@ const getHabitHistory = asyncHandler(async (req, res, next) => {
   res.json(completions);
 });
 
+// @desc    Lấy tất cả completions theo ngày
+// @route   GET /api/habits/completions/date/:date
+// @access  Private
+const getCompletionsByDate = asyncHandler(async (req, res) => {
+  const { date } = req.params;
+  
+  // Tạo range của ngày (từ 00:00 đến 23:59:59)
+  const startDate = new Date(date);
+  startDate.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(date);
+  endDate.setHours(23, 59, 59, 999);
+  
+  // Tìm tất cả completion trong ngày cho user hiện tại
+  const completions = await Completion.find({
+    user: req.user._id,
+    date: {
+      $gte: startDate,
+      $lte: endDate
+    }
+  }).populate('habit', 'title icon color');
+  
+  res.json(completions);
+});
+
+// @desc    Lấy thống kê tổng quan
+// @route   GET /api/habits/stats/overview
+// @access  Private
+const getHabitStats = asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+  
+  // Chuyển đổi chuỗi ngày thành đối tượng Date
+  const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
+  const end = endDate ? new Date(endDate) : new Date();
+  
+  // Thiết lập giờ cho ngày bắt đầu và kết thúc
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  
+  // Lấy tất cả thói quen của người dùng
+  const habits = await Habit.find({ user: req.user._id, isArchived: false });
+  
+  // Lấy tất cả completions trong khoảng thời gian
+  const completions = await Completion.find({
+    user: req.user._id,
+    date: { $gte: start, $lte: end },
+    completed: true
+  });
+  
+  // Tính tỷ lệ hoàn thành
+  const daysInRange = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  const totalPossible = habits.length * daysInRange;
+  const completionRate = totalPossible > 0 
+    ? (completions.length / totalPossible) * 100 
+    : 0;
+  
+  // Tính streak hiện tại và tốt nhất
+  // (Logic phức tạp hơn, chỉ là ví dụ đơn giản)
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+  
+  // Kiểm tra xem hôm nay đã hoàn thành ít nhất một thói quen chưa
+  const todayCompletions = await Completion.countDocuments({
+    user: req.user._id,
+    date: { 
+      $gte: currentDate,
+      $lt: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)
+    },
+    completed: true
+  });
+  
+  let currentStreak = 0;
+  if (todayCompletions > 0) {
+    currentStreak = 1;
+    
+    // Kiểm tra các ngày trước đó
+    let checkDate = new Date(currentDate);
+    checkDate.setDate(checkDate.getDate() - 1);
+    
+    while (true) {
+      const dayCompletions = await Completion.countDocuments({
+        user: req.user._id,
+        date: { 
+          $gte: checkDate,
+          $lt: new Date(checkDate.getTime() + 24 * 60 * 60 * 1000)
+        },
+        completed: true
+      });
+      
+      if (dayCompletions > 0) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+  }
+  
+  // Logic để tính streak tốt nhất trong lịch sử
+  // (Đây sẽ là logic phức tạp và tốn kém, nên có thể cân nhắc lưu trữ giá trị này)
+  const bestStreak = Math.max(currentStreak, habits.reduce((max, habit) => Math.max(max, habit.streak?.longest || 0), 0));
+  
+  // Lấy top 5 thói quen có tỷ lệ hoàn thành cao nhất
+  const habitsWithStats = await Promise.all(habits.map(async (habit) => {
+    const habitCompletions = completions.filter(c => c.habit.toString() === habit._id.toString());
+    const rate = daysInRange > 0 ? (habitCompletions.length / daysInRange) * 100 : 0;
+    
+    return {
+      _id: habit._id,
+      title: habit.title,
+      icon: habit.icon,
+      color: habit.color,
+      completionRate: rate,
+      streak: habit.streak?.current || 0
+    };
+  }));
+  
+  const topHabits = habitsWithStats
+    .sort((a, b) => b.completionRate - a.completionRate)
+    .slice(0, 5);
+  
+  // Tạo dữ liệu hoàn thành theo ngày
+  const completionData = [];
+  const days = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(new Date(d));
+  }
+  
+  for (const day of days) {
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    
+    const dayEnd = new Date(day);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    const dayCompletions = completions.filter(c => 
+      c.date >= dayStart && c.date <= dayEnd
+    );
+    
+    completionData.push({
+      date: day.toISOString().split('T')[0],
+      completed: dayCompletions.length,
+      total: habits.length,
+      rate: habits.length > 0 ? dayCompletions.length / habits.length : 0
+    });
+  }
+  
+  res.json({
+    overview: {
+      completionRate: Math.round(completionRate),
+      currentStreak,
+      bestStreak
+    },
+    topHabits,
+    completionData
+  });
+});
+
 module.exports = {
   getHabits,
   getHabitById,
@@ -286,4 +444,6 @@ module.exports = {
   completeHabit,
   uncompleteHabit,
   getHabitHistory,
+  getCompletionsByDate,
+  getHabitStats
 };

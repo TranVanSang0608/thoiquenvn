@@ -8,7 +8,9 @@ const {
   deleteHabit,
   completeHabit,
   uncompleteHabit,
-  getHabitHistory
+  getHabitHistory,
+  getCompletionsByDate,
+  getHabitStats
 } = require('../controllers/habitController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -19,6 +21,12 @@ router.use(protect);
 router.route('/')
   .get(getHabits)
   .post(createHabit);
+
+// Route lấy thống kê
+router.get('/stats/overview', getHabitStats);
+
+// Route lấy completions theo ngày
+router.get('/completions/date/:date', getCompletionsByDate);
 
 // Route cho thói quen cụ thể
 router.route('/:id')

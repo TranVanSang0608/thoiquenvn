@@ -4,9 +4,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark mode styles */
+:root {
+  --color-background: #ffffff;
+  --color-foreground: #1f2937;
+  --color-neutral-lightest: #f5f7fa;
+  --color-neutral-light: #e5e7eb;
+  --color-neutral: #6b7280;
+  --color-neutral-dark: #1f2937;
+  --color-primary-lightest: #ede9fe;
+  --color-primary-light: #c4b5fd;
+  --color-primary: #8a5cf5;
+  --color-primary-dark: #6942d0;
+  --color-success: #34d399;
+  --color-warning: #f97316;
+  --color-danger: #ef4444;
+}
+
+.dark {
+  --color-background: #1f2937;
+  --color-foreground: #f9fafb;
+  --color-neutral-lightest: #374151;
+  --color-neutral-light: #4b5563;
+  --color-neutral: #9ca3af;
+  --color-neutral-dark: #f9fafb;
+  --color-primary-lightest: #5b21b6;
+  --color-primary-light: #7c3aed;
+  --color-primary: #8b5cf6;
+  --color-primary-dark: #a78bfa;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+}
+
 @layer base {
   body {
-    @apply bg-neutral-lightest text-neutral-dark font-sans;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    @apply font-sans;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-semibold;
@@ -24,6 +59,27 @@
     @apply border border-neutral-light text-neutral hover:bg-neutral-lightest;
   }
   .card {
-    @apply bg-white rounded-lg shadow-sm p-4;
+    background-color: var(--color-background);
+    @apply rounded-lg shadow-sm p-4;
+  }
+  
+  .bg-white {
+    background-color: var(--color-background);
+  }
+  
+  .bg-neutral-lightest {
+    background-color: var(--color-neutral-lightest);
+  }
+  
+  .text-neutral-dark {
+    color: var(--color-neutral-dark);
+  }
+  
+  .text-neutral {
+    color: var(--color-neutral);
+  }
+  
+  .border-neutral-light {
+    border-color: var(--color-neutral-light);
   }
 }

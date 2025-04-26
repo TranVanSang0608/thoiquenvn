@@ -22,11 +22,31 @@ const userSchema = mongoose.Schema(
     settings: {
       theme: {
         type: String,
+        enum: ['light', 'dark'],
         default: 'light',
+      },
+      fontSize: {
+        type: String,
+        enum: ['small', 'medium', 'large'],
+        default: 'medium',
       },
       language: {
         type: String,
         default: 'vi',
+      },
+      notifications: {
+        email: {
+          type: Boolean,
+          default: false,
+        },
+        reminderTime: {
+          type: String,
+          default: '20:00',
+        },
+        reminderDays: {
+          type: [Number],
+          default: [1, 2, 3, 4, 5], // Thứ 2 đến thứ 6
+        },
       },
       reminderEnabled: {
         type: Boolean,
